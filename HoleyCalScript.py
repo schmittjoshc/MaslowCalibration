@@ -1,6 +1,6 @@
 import math
 import random
-from scipy.optimize import curve_fit
+from scipy.optimize import least_squares
 import kinematics
 import HoleyCalibration
 
@@ -59,10 +59,12 @@ cal.SetMeasurements(dH0H1,dH0H2,dH0H3,dH0H4,dH1H2,dH1H4,dH2H3,dH3H4)
        
 cal.Calibrate()
 
-CalResults=cal.OptimalMachineParameterDeltas
+CalResults=cal.OptimizationOutput.x
 
-CalibratedLengthChange=cal.LengthChangeFromStartingPoint(cal.MeasuredLengthArray,CalResults[0],CalResults[1],CalResults[2],CalResults[3])
+CalibratedError=cal.LengthDeltaFromIdeal(CalResults)
 
+print("Calibrated Error:")
+print(CalibratedError)
 print(CalResults)
 print(cal.Opt_D)
 print(cal.Opt_motorOffsetY)

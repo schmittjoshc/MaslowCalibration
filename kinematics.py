@@ -337,7 +337,7 @@ class Kinematics():
             #print 'guess {:7.3f} {:7.3f} error {:7.3f} {:7.3f} guesslength {:7.3f} {:7.3f} '.format(xGuess,yGuess,aChainError,bChainError,guessLengthA, guessLengthB)
 
             #if we've converged on the point...or it's time to give up, exit the loop
-            if((abs(aChainError) < .001 and abs(bChainError) < .001) or guessCount > 5000):
+            if((abs(aChainError) < .00001 and abs(bChainError) < .00001) or guessCount > 5000):
                 if(guessCount > 5000):
                     print "Message: Unable to find valid machine position. Please calibrate chain lengths.",aChainError,bChainError,xGuess,yGuess
                     return xGuess, yGuess

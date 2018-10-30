@@ -1,6 +1,6 @@
 import kinematics
 import math
-from scipy.optimize import curve_fit
+from scipy.optimize import least_squares
 import numpy
 class HoleyCalibration():
     SP_D=3601.2
@@ -29,16 +29,16 @@ class HoleyCalibration():
     MeasuredLengthArray=0
     DesiredLengthDeltaArray=0
     
-    OptimalMachineParameterDeltas=0
+    OptimizationOutput=0
     CoefficientOfVariance=0
     
     kin=kinematics.Kinematics()
     #Define function with input of (ideal lengths and) machine parameters (delta) and output of length error
-    def LengthChangeFromStartingPoint(self,MeasuredLengthArray,Del_D,Del_motorOffsetY,Del_rotationDiskRadius,Del_chainSagCorrection):
-        self.kin.D=self.SP_D+Del_D
-        self.kin.motorOffsetY=self.SP_motorOffsetY+Del_motorOffsetY
-        self.kin.rotationDiskRadius=self.SP_rotationDiskRadius+Del_rotationDiskRadius
-        self.kin.chainSagCorrection=self.SP_chainSagCorrection+Del_chainSagCorrection
+    def LengthDeltaFromIdeal(self,DeltaArray): #Del_D,Del_motorOffsetY,Del_rotationDiskRadius,Del_chainSagCorrection):
+        self.kin.D=self.SP_D+DeltaArray[0]
+        self.kin.motorOffsetY=self.SP_motorOffsetY+DeltaArray[1]
+        self.kin.rotationDiskRadius=self.SP_rotationDiskRadius+DeltaArray[2]
+        self.kin.chainSagCorrection=self.SP_chainSagCorrection+DeltaArray[3]
         
         aH0x,aH0y=self.kin.forward(self.LC00,self.RC00)
         aH1x,aH1y=self.kin.forward(self.LC01,self.RC01)
@@ -46,7 +46,7 @@ class HoleyCalibration():
         aH3x,aH3y=self.kin.forward(self.LC03,self.RC03)
         aH4x,aH4y=self.kin.forward(self.LC04,self.RC04)
         
-        return self.CalculateLengthArray(aH0x,aH0y,aH1x,aH1y,aH2x,aH2y,aH3x,aH3y,aH4x,aH4y)-MeasuredLengthArray
+        return self.CalculateLengthArray(aH0x,aH0y,aH1x,aH1y,aH2x,aH2y,aH3x,aH3y,aH4x,aH4y)-self.IdealLengthArray
     def LengthChangePlusOne(self,MeasuredLengthArray,Del_D,Del_motorOffsetY,Del_rotationDiskRadius,Del_chainSagCorrection):
         LenChange=self.LengthChangeFromStartingPoint(MeasuredLengthArray,Del_D,Del_motorOffsetY,Del_rotationDiskRadius,Del_chainSagCorrection)
         return LenChange+1
@@ -81,11 +81,12 @@ class HoleyCalibration():
     
     def Calibrate(self):
         TargetLengthChange=self.IdealLengthArray-self.MeasuredLengthArray+1
-        self.OptimalMachineParameterDeltas,self.CoefficientOfVariance=curve_fit(self.LengthChangePlusOne,self.MeasuredLengthArray,TargetLengthChange,p0=numpy.array([1,1,1,1]),absolute_sigma=True,sigma=numpy.array([.5,.5,.5,.5,.5,.5,.5,.5]))
-        self.Opt_D=self.OptimalMachineParameterDeltas[0]+self.SP_D
-        self.Opt_motorOffsetY=self.OptimalMachineParameterDeltas[1]+self.SP_motorOffsetY
-        self.Opt_rotationDiskRadius=self.OptimalMachineParameterDeltas[2]+self.SP_rotationDiskRadius
-        self.Opt_chainSagCorrection=self.OptimalMachineParameterDeltas[3]+self.SP_chainSagCorrection
+        self.OptimizationOutput=least_squares(self.LengthDeltaFromIdeal,numpy.array([1,1,1,1]),jac='2-point',diff_step=1)
+        Deltas=self.OptimizationOutput.x
+        self.Opt_D=Deltas[0]+self.SP_D
+        self.Opt_motorOffsetY=Deltas[1]+self.SP_motorOffsetY
+        self.Opt_rotationDiskRadius=Deltas[2]+self.SP_rotationDiskRadius
+        self.Opt_chainSagCorrection=Deltas[3]+self.SP_chainSagCorrection
         self.kin.D=self.Opt_D
         self.kin.motorOffsetY=self.Opt_motorOffsetY
         self.kin.rotationDiskRadius=self.Opt_rotationDiskRadius
