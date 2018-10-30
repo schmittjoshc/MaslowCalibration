@@ -39,17 +39,14 @@ class HoleyCalibration():
         self.kin.motorOffsetY=self.SP_motorOffsetY+DeltaArray[1]
         self.kin.rotationDiskRadius=self.SP_rotationDiskRadius+DeltaArray[2]
         self.kin.chainSagCorrection=self.SP_chainSagCorrection+DeltaArray[3]
-        
+        self.kin.recomputeGeometry()
         aH0x,aH0y=self.kin.forward(self.LC00,self.RC00)
         aH1x,aH1y=self.kin.forward(self.LC01,self.RC01)
         aH2x,aH2y=self.kin.forward(self.LC02,self.RC02)
         aH3x,aH3y=self.kin.forward(self.LC03,self.RC03)
         aH4x,aH4y=self.kin.forward(self.LC04,self.RC04)
         
-        return self.CalculateLengthArray(aH0x,aH0y,aH1x,aH1y,aH2x,aH2y,aH3x,aH3y,aH4x,aH4y)-self.IdealLengthArray
-    def LengthChangePlusOne(self,MeasuredLengthArray,Del_D,Del_motorOffsetY,Del_rotationDiskRadius,Del_chainSagCorrection):
-        LenChange=self.LengthChangeFromStartingPoint(MeasuredLengthArray,Del_D,Del_motorOffsetY,Del_rotationDiskRadius,Del_chainSagCorrection)
-        return LenChange+1
+        return self.CalculateLengthArray(aH0x,aH0y,aH1x,aH1y,aH2x,aH2y,aH3x,aH3y,aH4x,aH4y)+self.MeasuredLengthArray-self.IdealLengthArray-self.IdealLengthArray
     
     def CalculateLengthArray(self,aH0x,aH0y,aH1x,aH1y,aH2x,aH2y,aH3x,aH3y,aH4x,aH4y):
         LenH00H01=GeometricLength(aH0x,aH0y,aH1x,aH1y)
@@ -67,6 +64,7 @@ class HoleyCalibration():
         self.kin.motorOffsetY=self.SP_motorOffsetY
         self.kin.rotationDiskRadius=self.SP_rotationDiskRadius
         self.kin.chainSagCorrection=self.SP_chainSagCorrection
+        self.kin.recomputeGeometry()
         self.IdealLengthArray=self.CalculateLengthArray(aH0x,aH0y,aH1x,aH1y,aH2x,aH2y,aH3x,aH3y,aH4x,aH4y)
         
         self.LC00,self.RC00=self.kin.inverse(aH0x,aH0y)
