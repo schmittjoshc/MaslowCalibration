@@ -7,18 +7,13 @@ import HoleyCalibration
 cal=HoleyCalibration.HoleyCalibration()
 cal.kin.isQuadKinematics=False
 
-kin=kinematics.Kinematics()
-kin.D=3601.2
-kin.motorOffsetY=468.4
-kin.rotationDiskRadius=139.1
-kin.chainSagCorrection=31.865887
-kin.chainOverSprocket=1
-
 # Starting machine calibration
 cal.SP_D=3601.2
 cal.SP_motorOffsetY=468.4
 cal.SP_rotationDiskRadius=139.1
 cal.SP_chainSagCorrection=31.865887
+cal.SP_leftChainTolerance=0
+cal.SP_rightChainTolerance=0
 cal.SP_chainOverSprocket=1
 
 # adjust based upon machine settings
@@ -55,7 +50,9 @@ dH2H3 = 2036.0-101.0
 dH3H4 = 812.0-101.0
 dH0M5 = 466.0-101.0
 dH2M5 = 1070.0-101.0
-cal.SetMeasurements(dH0H1,dH0H2,dH0H3,dH0H4,dH1H2,dH1H4,dH2H3,dH3H4)
+dH2Top=254
+dH3Top=255
+cal.SetMeasurements(dH0H1,dH0H2,dH0H3,dH0H4,dH1H2,dH1H4,dH2H3,dH3H4,dH2Top,dH3Top)
        
 cal.Calibrate()
 
@@ -65,8 +62,27 @@ CalibratedError=cal.LengthDeltaFromIdeal(CalResults)
 
 print("Calibrated Error:")
 print(CalibratedError)
+print("")
+print("Calibration Deltas:")
 print(CalResults)
+print("")
+print("Distance Between Motors:")
 print(cal.Opt_D)
+print("")
+print("Motor Y Offset:")
 print(cal.Opt_motorOffsetY)
+print("")
+print("Rotational Radius:")
 print(cal.Opt_rotationDiskRadius)
+print("")
+print("Chain Sag Correction Constant:")
 print(cal.Opt_chainSagCorrection)
+print("")
+print("Left Chain Tolerance:")
+print(cal.Opt_leftChainTolerance)
+print("")
+print("Right Chain Tolerance:")
+print(cal.Opt_rightChainTolerance)
+print("")
+print("Errors:")
+print(cal.OptimizationOutput.fun)

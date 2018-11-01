@@ -82,6 +82,9 @@ class Kinematics():
     # output = chain lengths measured from 12 o'clock
     Chain1  = 0#left chain length
     Chain2  = 0#right chain length
+    
+    leftChainTolerance=0
+    rightChainTolerance=0
 
     i = 0
     
@@ -169,8 +172,8 @@ class Kinematics():
         Chain2Straight *= (1 + ((self.chainSagCorrection / 1000000000000) * math.pow(math.cos(Chain2Angle),2) * math.pow(Chain2Straight,2) * math.pow((math.tan(Chain1Angle) * math.cos(Chain2Angle)) + math.sin(Chain2Angle),2)))
 
         #Calculate total chain lengths accounting for sprocket geometry and chain sag
-        Chain1 = Chain1AroundSprocket + Chain1Straight
-        Chain2 = Chain2AroundSprocket + Chain2Straight
+        Chain1 = Chain1AroundSprocket + Chain1Straight*(1+self.leftChainTolerance/100)
+        Chain2 = Chain2AroundSprocket + Chain2Straight*(1+self.rightChainTolerance/100)
 
         #Subtract of the virtual length which is added to the chain by the rotation mechanism
         Chain1 = Chain1 - self.rotationDiskRadius
@@ -315,7 +318,9 @@ class Kinematics():
         Take the chain lengths and return an XY position
 
         '''
-
+        #print("Chain Sag Correction:")
+        #print(self.chainSagCorrection)
+        #print("")
         # apply any offsets for slipped links
         chainALength = chainALength + (self.chain1Offset * self.R)
         chainBLength = chainBLength + (self.chain2Offset * self.R)
@@ -337,7 +342,7 @@ class Kinematics():
             #print 'guess {:7.3f} {:7.3f} error {:7.3f} {:7.3f} guesslength {:7.3f} {:7.3f} '.format(xGuess,yGuess,aChainError,bChainError,guessLengthA, guessLengthB)
 
             #if we've converged on the point...or it's time to give up, exit the loop
-            if((abs(aChainError) < .00001 and abs(bChainError) < .00001) or guessCount > 5000):
+            if((abs(aChainError) < .000000001 and abs(bChainError) < .000000001) or guessCount > 5000):
                 if(guessCount > 5000):
                     print "Message: Unable to find valid machine position. Please calibrate chain lengths.",aChainError,bChainError,xGuess,yGuess
                     return xGuess, yGuess
