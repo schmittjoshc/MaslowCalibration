@@ -85,6 +85,8 @@ class Kinematics():
     
     leftChainTolerance=0
     rightChainTolerance=0
+    chainWeight=.09/12
+    chainElasticity=.000023
 
     i = 0
     
@@ -156,24 +158,51 @@ class Kinematics():
 
             Chain1AroundSprocket = self.R * Chain1Angle
             Chain2AroundSprocket = self.R * Chain2Angle
+            
+            xTangent1=-self._xCordOfMotor+self.R*math.sin(Chain1Angle)
+            yTangent1=self._yCordOfMotor+self.R*math.cos(Chain1Angle)
+            
+            xTangent2=self._xCordOfMotor-self.R*math.sin(Chain1Angle)
+            yTangent2=self._yCordOfMotor+self.R*math.cos(Chain1Angle)
         else:
             Chain1Angle = math.asin((self._yCordOfMotor - yTarget)/Motor1Distance) - math.asin(self.R/Motor1Distance)
             Chain2Angle = math.asin((self._yCordOfMotor - yTarget)/Motor2Distance) - math.asin(self.R/Motor2Distance)
 
             Chain1AroundSprocket = self.R * (3.14159 - Chain1Angle)
             Chain2AroundSprocket = self.R * (3.14159 - Chain2Angle)
-
+            
+            xTangent1=-self._xCordOfMotor-self.R*math.sin(Chain1Angle)
+            yTangent1=self._yCordOfMotor-self.R*math.cos(Chain1Angle)
+            
+            xTangent2=self._xCordOfMotor+self.R*math.sin(Chain1Angle)
+            yTangent2=self._yCordOfMotor-self.R*math.cos(Chain1Angle)
+        
         #Calculate the straight chain length from the sprocket to the bit
         Chain1Straight = math.sqrt(math.pow(Motor1Distance,2)-math.pow(self.R,2))
         Chain2Straight = math.sqrt(math.pow(Motor2Distance,2)-math.pow(self.R,2))
-
-        #Correct the straight chain lengths to account for chain sag
-        Chain1Straight *= (1 + ((self.chainSagCorrection / 1000000000000) * math.pow(math.cos(Chain1Angle),2) * math.pow(Chain1Straight,2) * math.pow((math.tan(Chain2Angle) * math.cos(Chain1Angle)) + math.sin(Chain1Angle),2)))
-        Chain2Straight *= (1 + ((self.chainSagCorrection / 1000000000000) * math.pow(math.cos(Chain2Angle),2) * math.pow(Chain2Straight,2) * math.pow((math.tan(Chain1Angle) * math.cos(Chain2Angle)) + math.sin(Chain2Angle),2)))
+        
+        #TensionDenominator=(x_l       y_r-      x_r       y_l-      x_l       y_t     +x_t    y_l      +x_r       y_t    -x_t     y_r)
+        TensionDenominator= (xTangent1*yTangent2-xTangent2*yTangent1-xTangent1*yTarget+xTarget*yTangent1+xTangent2*yTarget-xTarget*yTangent2)
+        
+        #T_l     = -(    wsqrt(     pow(x_l      -x_t    ,2.0)+pow(     y_l      -y_t    ,2.0))(x_r      -x_t))    /TensionDenominator
+        Tension1 = - (math.sqrt(math.pow(xTangent1-xTarget,2.0)+math.pow(yTangent1-yTarget,2.0))(xTangent2-xTarget))/TensionDenominator
+        
+        #T_r     = (   wsqrt(     pow(x_r      -x_t    ,2.0)+pow(     y_r      -y_t    ,2.0))(x_l      -x_t))/(x_ly_r-x_ry_l-x_ly_t+x_ty_l+x_ry_t-x_ty_r)
+        Tension2 = (math.sqrt(math.pow(xTangent2-xTarget,2.0)+math.pow(yTangent2-yTarget,2.0))(xTangent1-xTarget))/TensionDenominator
+        
+        HorizontalTension1=Tension1*(xTarget+self._xCordOfMotor)/Chain1Straight
+        HorizontalTension2=Tension2*(self._xCordOfMotor-xTarget)/Chain2Straight
+        
+        a1=HorizontalTension1/self.chainWeight
+        a2=HorizontalTension2/self.chainWeight
+        
+        #Catenary Equation
+        Chain1=math.sqrt(math.pow(2*a1*math.sinh((xTarget-xTangent1)/(2*a1)),2)+math.pow(self._yCordOfMotor-yTarget,2))
+        Chain2=math.sqrt(math.pow(2*a2*math.sinh((xTangent2-xTarget)/(2*a2)),2)+math.pow(self._yCordOfMotor-yTarget,2))
 
         #Calculate total chain lengths accounting for sprocket geometry and chain sag
-        Chain1 = Chain1AroundSprocket + Chain1Straight*(1+self.leftChainTolerance/100)
-        Chain2 = Chain2AroundSprocket + Chain2Straight*(1+self.rightChainTolerance/100)
+        Chain1 = Chain1AroundSprocket + Chain1Straight*(1+self.leftChainTolerance/100)/(1+Tension1*self.chainElasticity)
+        Chain2 = Chain2AroundSprocket + Chain2Straight*(1+self.rightChainTolerance/100)/(1+Tension2*self.chainElasticity)
 
         #Subtract of the virtual length which is added to the chain by the rotation mechanism
         Chain1 = Chain1 - self.rotationDiskRadius
