@@ -39,7 +39,14 @@ class Kinematics():
     MaxTries = 10
     DeltaPhi = 0.01
     DeltaY = 0.01
-
+    
+    lastLeftChainStraight=0
+    lastRightChainStraight=0
+    lastLeftTension=0
+    lastRightTension=0
+    lastLeftChainCatenary=0
+    lastRightChainCatenary=0
+    
     #Criterion Computation Variables
     Phi = -0.2
     TanGamma = 0
@@ -149,6 +156,9 @@ class Kinematics():
         #Confirm that the coordinates are on the wood
         self._verifyValidTarget(xTarget, yTarget)
         
+        #import pdb
+        #pdb.set_trace()
+        
         Motor1Distance = math.sqrt(math.pow((-1*self._xCordOfMotor - xTarget),2)+math.pow((self._yCordOfMotor - yTarget),2))
         Motor2Distance = math.sqrt(math.pow((self._xCordOfMotor - xTarget),2)+math.pow((self._yCordOfMotor - yTarget),2))
 
@@ -179,38 +189,49 @@ class Kinematics():
             yTangent2=self._yCordOfMotor-self.R*math.cos(Chain2Angle)
         
         #Calculate the straight chain length from the sprocket to the bit
-        Chain1Straight = math.sqrt(math.pow(Motor1Distance,2)-math.pow(self.R,2))
-        Chain2Straight = math.sqrt(math.pow(Motor2Distance,2)-math.pow(self.R,2))
+        self.lastLeftChainStraight = math.sqrt(math.pow(Motor1Distance,2)-math.pow(self.R,2))
+        self.lastRightChainStraight = math.sqrt(math.pow(Motor2Distance,2)-math.pow(self.R,2))
         
         #TensionDenominator=(x_l       y_r-      x_r       y_l-      x_l       y_t     +x_t    y_l      +x_r       y_t    -x_t     y_r)
         TensionDenominator= (xTangent1*yTangent2-xTangent2*yTangent1-xTangent1*yTarget+xTarget*yTangent1+xTangent2*yTarget-xTarget*yTangent2)
         
         #T_l     = -(    w                *sqrt(     pow(x_l      -x_t    ,2.0)+pow(     y_l      -y_t    ,2.0))  (x_r      -x_t))    /TensionDenominator
-        Tension1 = - (self.sledWeight*math.sqrt(math.pow(xTangent1-xTarget,2.0)+math.pow(yTangent1-yTarget,2.0))*(xTangent2-xTarget))/TensionDenominator
+        self.lastLeftTension = - (self.sledWeight*math.sqrt(math.pow(xTangent1-xTarget,2.0)+math.pow(yTangent1-yTarget,2.0))*(xTangent2-xTarget))/TensionDenominator
         
         #T_r     = (   w                *sqrt(     pow(x_r      -x_t    ,2.0)+pow(     y_r      -y_t    ,2.0))  (x_l      -x_t))/(x_ly_r-x_ry_l-x_ly_t+x_ty_l+x_ry_t-x_ty_r)
-        Tension2 = (self.sledWeight*math.sqrt(math.pow(xTangent2-xTarget,2.0)+math.pow(yTangent2-yTarget,2.0))*(xTangent1-xTarget))/TensionDenominator
+        self.lastRightTension = (self.sledWeight*math.sqrt(math.pow(xTangent2-xTarget,2.0)+math.pow(yTangent2-yTarget,2.0))*(xTangent1-xTarget))/TensionDenominator
         
-        HorizontalTension=Tension1*(xTarget-xTangent1)/Chain1Straight
+        HorizontalTension=self.lastLeftTension*(xTarget-xTangent1)/self.lastLeftChainStraight
         
         #Calculation of horizontal component of tension for two chains should be equal, as validation step
-        #HorizontalTension1=Tension1*(xTarget-xTangent1)/Chain1Straight
-        #HorizontalTension2=Tension2*(xTangent2-xTarget)/Chain2Straight
+        #HorizontalTension1=self.lastLeftTension*(xTarget-xTangent1)/self.lastLeftChainStraight
+        #HorizontalTension2=self.lastRightTension*(xTangent2-xTarget)/self.lastRightChainStraight
+        #print("Horizontal Force Balance: ",HorizontalTension1-HorizontalTension2)
+        #print("Horizontal Tension: ",HorizontalTension)
         
         #Calculation of vertical force due to tension, to validate tension calculation
-        #VerticalForce=Tension1*(yTangent1-yTarget)/Chain1Straight+Tension2*(yTangent2-yTarget)/Chain2Straight
+        #VerticalForce=self.lastLeftTension*(yTangent1-yTarget)/self.lastLeftChainStraight+self.lastRightTension*(yTangent2-yTarget)/self.lastRightChainStraight
+        #print("Vertical Force: ",VerticalForce-self.sledWeight)
         
         a1=HorizontalTension/self.chainWeight
         a2=HorizontalTension/self.chainWeight
         
         #Catenary Equation
-        Chain1=math.sqrt(math.pow(2*a1*math.sinh((xTarget-xTangent1)/(2*a1)),2)+math.pow(yTangent1-yTarget,2))
-        Chain2=math.sqrt(math.pow(2*a2*math.sinh((xTangent2-xTarget)/(2*a2)),2)+math.pow(yTangent2-yTarget,2))
-
+        self.lastLeftChainCatenary=math.sqrt(math.pow(2*a1*math.sinh((xTarget-xTangent1)/(2*a1)),2)+math.pow(yTangent1-yTarget,2))
+        self.lastRightChainCatenary=math.sqrt(math.pow(2*a2*math.sinh((xTangent2-xTarget)/(2*a2)),2)+math.pow(yTangent2-yTarget,2))
+        if self.lastLeftChainCatenary>1.1*self.lastLeftChainStraight:
+            self.lastLeftChainCatenary=1.1*self.lastLeftChainStraight
+        
+        if self.lastRightChainCatenary>1.1*self.lastRightChainStraight:
+            self.lastRightChainCatenary=1.1*self.lastRightChainStraight
+        
+        #print("Sled Weight: :",self.sledWeight,"Chain1 Sag:",Chain1-Chain1Straight,"Chain2 Sag:",Chain2-Chain2Straight)
+        #print("Chain Sag 1: ",Chain1-Chain1Straight)
+        #print("Chain Sag 2: ",Chain2-Chain2Straight)
         #Calculate total chain lengths accounting for sprocket geometry and chain sag
-        Chain1 = Chain1AroundSprocket + Chain1*(1+self.leftChainTolerance/100)/(1+Tension1*self.chainElasticity)
-        Chain2 = Chain2AroundSprocket + Chain2*(1+self.rightChainTolerance/100)/(1+Tension2*self.chainElasticity)
-
+        Chain1 = Chain1AroundSprocket + self.lastLeftChainCatenary*(1.0+self.leftChainTolerance/100.0)/(1.0+self.lastLeftTension*self.chainElasticity)
+        Chain2 = Chain2AroundSprocket + self.lastRightChainCatenary*(1.0+self.rightChainTolerance/100.0)/(1.0+self.lastRightTension*self.chainElasticity)
+        
         #Subtract of the virtual length which is added to the chain by the rotation mechanism
         Chain1 = Chain1 - self.rotationDiskRadius
         Chain2 = Chain2 - self.rotationDiskRadius
@@ -354,8 +375,8 @@ class Kinematics():
         Take the chain lengths and return an XY position
 
         '''
-        #print("Chain Sag Correction:")
-        #print(self.chainSagCorrection)
+        #print("SledWeight:")
+        #print(self.sledWeight)
         #print("")
         # apply any offsets for slipped links
         chainALength = chainALength + (self.chain1Offset * self.R)
@@ -512,5 +533,4 @@ class Kinematics():
 
         Temp = ((math.sqrt(YPlus * YPlus - self.R * self.R)/self.R) - (self.y + YPlus - self.h * math.sin(Psi))/Denominator)
         return Temp
-
 
